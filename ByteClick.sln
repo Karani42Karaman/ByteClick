@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36327.8
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ByteClick", "ByteClick\ByteClick.csproj", "{99935AAB-FD7D-4864-86C5-D3C21CA1DC58}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ByteClick.Data", "ByteClick.Data\ByteClick.Data.csproj", "{356CA57E-6AE8-4FAA-8B9F-F0D511F6A6F9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{99935AAB-FD7D-4864-86C5-D3C21CA1DC58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{99935AAB-FD7D-4864-86C5-D3C21CA1DC58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{99935AAB-FD7D-4864-86C5-D3C21CA1DC58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{99935AAB-FD7D-4864-86C5-D3C21CA1DC58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{356CA57E-6AE8-4FAA-8B9F-F0D511F6A6F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{356CA57E-6AE8-4FAA-8B9F-F0D511F6A6F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{356CA57E-6AE8-4FAA-8B9F-F0D511F6A6F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{356CA57E-6AE8-4FAA-8B9F-F0D511F6A6F9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B591B70C-4F55-4EA4-A812-388963F47F4A}
+	EndGlobalSection
+EndGlobal
