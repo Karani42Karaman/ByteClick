@@ -9,7 +9,7 @@ echo ---------------------------------------------------
 echo.
 
 :: Tüneli başlatır ve linki ekranda tutar
-cloudflared tunnel --url https://localhost:7021
+cloudflared tunnel --url http://localhost:7021
 
 echo.
 echo ⚠️ Tunel kapandi! Yeniden baslatmak icin bir tusa basin...

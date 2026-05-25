@@ -14,30 +14,27 @@ namespace ByteClick
             builder.Services.AddControllers();
 
 
-            // 2. SQL Server baðlantýsý
+            // 2. SQL Server baï¿½lantï¿½sï¿½
             builder.Services.AddDbContext<TradingDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // 3. Tarayýcýdan (TradingView) gelen istekleri engellememesi için CORS
-            builder.Services.AddCors(options =>
+            builder.WebHost.ConfigureKestrel(serverOptions =>
             {
-                options.AddPolicy("TradingViewPolicy", policy =>
-                {
-                    policy.WithOrigins("https://www.tradingview.com") // Sadece TradingView'a izin ver
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials(); // Eðer cookie/auth gerekiyorsa
-                });
+                serverOptions.ListenAnyIP(5001);
+                serverOptions.ListenAnyIP(7021);
             });
-
              
             var app = builder.Build();
 
-
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<TradingDbContext>();
+                db.Database.Migrate();
+            }
             app.UseCors(x => x
     .AllowAnyMethod()
     .AllowAnyHeader()
-    .SetIsOriginAllowed(origin => true) // Tüm originlere izin ver
+    .SetIsOriginAllowed(origin => true) // Tï¿½m originlere izin ver
     .AllowCredentials());
             // Configure the HTTP request pipeline.
 

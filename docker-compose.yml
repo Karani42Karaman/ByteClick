@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: byteclick-db
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=SecretPassword2026!
+      - MSSQL_PID=Express
+    ports:
+      - "1436:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    networks:
+      - byteclick-network
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "SecretPassword2026!", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: ByteClick/Dockerfile
+    container_name: byteclick-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development # Production yerine Development yap hata detaylarını gör
+      - ASPNETCORE_URLS=http://+:5001 # Sadece HTTP üzerinden çalıştıralım
+      - ConnectionStrings__DefaultConnection=Server=db;Database=ByteClick;User Id=sa;Password=SecretPassword2026!;TrustServerCertificate=True
+    ports:
+      - "7021:5001" # Dışarıdan yine 7021 ile bağlanabilirsin ama içeride 5001 (HTTP) çalışır
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - byteclick-network
+  web:
+    build:
+      context: .
+      dockerfile: ByteClick.Web/Dockerfile
+    container_name: byteclick-web
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=db;Database=ByteClick;User Id=sa;Password=SecretPassword2026!;TrustServerCertificate=True
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - byteclick-network
+
+networks:
+  byteclick-network:
+    driver: bridge
+
+volumes:
+  mssql-data:

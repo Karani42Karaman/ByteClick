@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: byteclick-db
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=SecretPassword2026!
+      - MSSQL_PID=Express
+    ports:
+      - "1436:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    networks:
+      - byteclick-network
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P SecretPassword2026! -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: yourusername/byteclick-api:latest
+    container_name: byteclick-api
+    build:
+      context: .
+      dockerfile: ByteClick/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=https://+:7021;http://+:5001
+      - ASPNETCORE_HTTPS_PORT=7021
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=YourCertPassword123!
+      - ConnectionStrings__DefaultConnection=Server=db;Database=ByteClick;User Id=sa;Password=SecretPassword2026!;TrustServerCertificate=True
+    ports:
+      - "7021:7021"
+      - "5001:5001"
+    volumes:
+      - ./https:/https:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - byteclick-network
+
+  web:
+    image: yourusername/byteclick-web:latest
+    container_name: byteclick-web
+    build:
+      context: .
+      dockerfile: ByteClick.Web/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=db;Database=ByteClick;User Id=sa;Password=SecretPassword2026!;TrustServerCertificate=True
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - byteclick-network
+
+networks:
+  byteclick-network:
+    driver: bridge
+
+volumes:
+  mssql-data:

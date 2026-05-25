@@ -24,7 +24,7 @@ namespace ByteClick.Controllers
         {
             // Hız ölçümü için kronometreyi başlat
             var sw = Stopwatch.StartNew();
-            var receiveTime = DateTime.UtcNow;
+            var receiveTime = DateTime.Now;
 
             try
             {
@@ -59,10 +59,10 @@ namespace ByteClick.Controllers
                     Volume = request.Volume ?? "0",
                     Raw = request.Comment ?? "",
                     TVTimestamp = tvTime,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     IsProcessed = false,
                     // TV ile Bizim Kayıt Arasındaki Fark (Gecikme)
-                    DelayMs = (DateTime.UtcNow - tvTime).TotalMilliseconds
+                    DelayMs = (DateTime.Now - tvTime).TotalMilliseconds
                 };
 
                 _context.Alerts.Add(alert);
@@ -101,7 +101,7 @@ namespace ByteClick.Controllers
 
                 // İşlendi olarak işaretle
                 alert.IsProcessed = true;
-                alert.ProcessDelayMs = (DateTime.UtcNow - alert.CreatedAt).TotalMilliseconds;
+                alert.ProcessDelayMs = (DateTime.Now - alert.CreatedAt).TotalMilliseconds;
 
                 await _context.SaveChangesAsync();
 
@@ -167,8 +167,70 @@ namespace ByteClick.Controllers
                 database = _context.Database.CanConnect() ? "connected" : "disconnected"
             });
         }
+
+        [HttpPost("open")]
+        public async Task<IActionResult> LogOpen([FromBody] TradeLogs log)
+        {
+            try
+            {
+                // Aynı ticket daha önce kaydedilmiş mi kontrol et
+                if (await _context.TradeLogs.AnyAsync(x => x.Ticket == log.Ticket))
+                    return BadRequest("Bu işlem zaten kayıtlı.");
+
+                log.OpenTime = DateTime.Now;
+                log.IsOpen = true;
+
+                _context.TradeLogs.Add(log);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "İşlem açılışı kaydedildi." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // POST: api/trade/close -> MT5 işlem kapandığında çağırır
+        [HttpPost("close")]
+        public async Task<IActionResult> LogClose([FromBody] TradeUpdateDTO update)
+        {
+            try
+            {
+                var existingLog = await _context.TradeLogs
+                    .FirstOrDefaultAsync(x => x.Ticket == update.Ticket && x.IsOpen);
+
+                if (existingLog == null)
+                    return NotFound("Güncellenecek açık işlem bulunamadı.");
+
+                existingLog.ClosePrice = update.ClosePrice;
+                existingLog.Profit = update.Profit;
+                existingLog.CloseTime = DateTime.Now;
+                existingLog.IsOpen = false;
+
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "İşlem kapanışı ve kâr/zarar kaydedildi." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // Dashboard için tüm işlemleri getir
+        [HttpGet("history")]
+        public ActionResult<List<TradeLogs>> GetHistory()
+        {
+            return   _context.TradeLogs.OrderByDescending(x => x.OpenTime).ToList();
+        }
     }
 
+    public class TradeUpdateDTO
+    {
+        public long Ticket { get; set; }
+        public double ClosePrice { get; set; }
+        public double Profit { get; set; }
+    }
     public class TradingViewAlertRequest
     {
         public string? Ticker { get; set; }     // {{ticker}}

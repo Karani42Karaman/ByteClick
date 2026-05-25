@@ -10,9 +10,10 @@ namespace ByteClick.Web.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly TradingDbContext _context;
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger,TradingDbContext tradingDbContext)
         {
             _logger = logger;
+            _context = tradingDbContext;
         }
 
         public IActionResult Index()
@@ -20,7 +21,7 @@ namespace ByteClick.Web.Controllers
             var alerts =  _context.Alerts
             .OrderByDescending(a => a.CreatedAt)
             .Take(50) // Son 50 sinyal
-            .ToListAsync();
+            .ToList();
 
             return View(alerts);
         }
