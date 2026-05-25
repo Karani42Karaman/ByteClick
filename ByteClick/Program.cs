@@ -21,8 +21,16 @@ namespace ByteClick
             // 3. Tarayýcýdan (TradingView) gelen istekleri engellememesi için CORS
             builder.Services.AddCors(options =>
             {
-                options.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+                options.AddPolicy("TradingViewPolicy", policy =>
+                {
+                    policy.WithOrigins("https://www.tradingview.com") // Sadece TradingView'a izin ver
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials(); // Eðer cookie/auth gerekiyorsa
+                });
             });
+
+             
             var app = builder.Build();
 
 
@@ -39,6 +47,22 @@ namespace ByteClick
 
 
             app.MapControllers();
+
+            app.MapGet("/", () => new
+            {
+                service = "ByteClick Trading API",
+                version = "1.0",
+                status = "online",
+                timestamp = DateTime.Now,
+                endpoints = new
+                {
+                    health = "GET /webhook/tradingview/health",
+                    post_alert = "POST /webhook/tradingview",
+                    get_latest = "GET /webhook/tradingview/latest",
+                    get_all = "GET /webhook/tradingview/all",
+                    clear = "DELETE /webhook/tradingview/clear"
+                }
+            });
 
             app.Run();
         }
