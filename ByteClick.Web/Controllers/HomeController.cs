@@ -3,6 +3,7 @@ using ByteClick.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
+using System.Net.Http;
 
 namespace ByteClick.Web.Controllers
 {
@@ -16,16 +17,33 @@ namespace ByteClick.Web.Controllers
             _context = tradingDbContext;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var alerts =  _context.Alerts
-            .OrderByDescending(a => a.CreatedAt)
-            .Take(50) // Son 50 sinyal
-            .ToList();
+            var model = new DashboardViewModel();
 
-            return View(alerts);
+            // 1. Verileri Çek
+            var alerts = await _context.Alerts.OrderByDescending(a => a.CreatedAt).Take(50).ToListAsync();
+            var logs = await _context.TradeLogs.OrderByDescending(t => t.OpenTime).Take(50).ToListAsync();
+
+            model.Alerts = alerts;
+            model.TradeLogs = logs;
+
+            // 2. Analiz Hesaplamalarý
+            if (logs.Any())
+            {
+                model.TotalProfit = logs.Sum(t => t.Profit ?? 0);
+                model.TotalInvested = logs.Sum(t => t.OpenPrice * t.Lot * 100); // Yaklaþýk margin/yatýrýlan tutar (USD)
+
+                var closedTrades = logs.Where(t => !t.IsOpen).ToList();
+                model.WinRate = closedTrades.Any() ?
+                    (double)closedTrades.Count(t => t.Profit > 0) / closedTrades.Count * 100 : 0;
+
+                // Ortalama Gecikme (TV -> DB -> MT5)
+                model.AvgExecutionDelay = alerts.Where(a => a.ProcessDelayMs > 0).Average(a => a.ProcessDelayMs);
+            }
+
+            return View(model);
         }
-
         public IActionResult Privacy()
         {
             return View();
@@ -37,4 +55,14 @@ namespace ByteClick.Web.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
     }
+    public class DashboardViewModel
+    {
+        public List<Alert> Alerts { get; set; } = new();
+        public List<TradeLogs> TradeLogs { get; set; } = new();
+        public double TotalProfit { get; set; }
+        public double WinRate { get; set; }
+        public double AvgExecutionDelay { get; set; }
+        public double TotalInvested { get; set; }
+    }
+
 }

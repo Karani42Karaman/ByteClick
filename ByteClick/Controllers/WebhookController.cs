@@ -7,7 +7,7 @@ using System.Globalization;
 namespace ByteClick.Controllers
 {
     [ApiController]
-    [Route("webhook/tradingview")] // Doğru route yapısı
+    [Route("webhook/tradingview")]
     public class TradingViewWebhookController : ControllerBase
     {
         private readonly TradingDbContext _context;
@@ -19,6 +19,7 @@ namespace ByteClick.Controllers
             _logger = logger;
         }
 
+        // 1. SİNYAL ALICI (TradingView -> API)
         [HttpPost]
         public async Task<IActionResult> ReceiveAlert([FromBody] TradingViewAlertRequest request)
         {
@@ -76,114 +77,29 @@ namespace ByteClick.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Kayıt sırasında hata!");
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-        /// <summary>
-        /// MetaTrader'ın işlenmemiş en yeni alert'i alması için
-        /// GET http://localhost:7021/webhook/tradingview/latest
-        /// </summary>
-        [HttpGet("latest")]
-        public async Task<IActionResult> GetLatestUnprocessedAlert()
-        {
-            try
-            {
-                var alert = await _context.Alerts
-                    .Where(a => !a.IsProcessed)
-                    .OrderByDescending(a => a.CreatedAt)
-                    .FirstOrDefaultAsync();
-
-                if (alert == null)
-                {
-                    return Ok(new { status = "no_alerts", message = "Bekleyen sinyal yok" });
-                }
-
-                // İşlendi olarak işaretle
-                alert.IsProcessed = true;
-                alert.ProcessDelayMs = (DateTime.Now - alert.CreatedAt).TotalMilliseconds;
-
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation($"📤 Alert MT5'e gönderildi: {alert.Symbol} {alert.Action}");
-
-                return Ok(new
-                {
-                    status = "success",
-                    alert = alert
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Alert alınırken hata oluştu");
+                _logger.LogError(ex, "Alert kaydı patladı!");
                 return StatusCode(500, new { error = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Tüm alert'leri listeler (test amaçlı)
-        /// GET http://localhost:7021/webhook/tradingview/all
-        /// </summary>
-        [HttpGet("all")]
-        public async Task<IActionResult> GetAllAlerts([FromQuery] int take = 20)
-        {
-            var alerts = await _context.Alerts
-                .OrderByDescending(a => a.CreatedAt)
-                .Take(take)
-                .ToListAsync();
-
-            return Ok(new
-            {
-                total = alerts.Count,
-                alerts = alerts
-            });
-        }
-
-        /// <summary>
-        /// Tüm alert'leri sil (test amaçlı)
-        /// DELETE http://localhost:7021/webhook/tradingview/clear
-        /// </summary>
-        [HttpDelete("clear")]
-        public async Task<IActionResult> ClearAllAlerts()
-        {
-            var count = await _context.Alerts.CountAsync();
-            _context.Alerts.RemoveRange(_context.Alerts);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = $"{count} alert silindi" });
-        }
-
-        /// <summary>
-        /// Sistem durumu kontrolü
-        /// GET http://localhost:7021/webhook/tradingview/health
-        /// </summary>
-        [HttpGet("health")]
-        public IActionResult HealthCheck()
-        {
-            return Ok(new
-            {
-                status = "healthy",
-                timestamp = DateTime.Now,
-                database = _context.Database.CanConnect() ? "connected" : "disconnected"
-            });
-        }
-
+        // 2. MT5 İŞLEM AÇILIŞ KAYDI (MT5 -> API)
         [HttpPost("open")]
         public async Task<IActionResult> LogOpen([FromBody] TradeLogs log)
         {
             try
             {
-                // Aynı ticket daha önce kaydedilmiş mi kontrol et
                 if (await _context.TradeLogs.AnyAsync(x => x.Ticket == log.Ticket))
-                    return BadRequest("Bu işlem zaten kayıtlı.");
+                    return BadRequest("Bu ticket zaten sistemde var.");
 
                 log.OpenTime = DateTime.Now;
                 log.IsOpen = true;
+                // Dolar bazlı işlem yapıldığı için kur çevrimi gerekmez, gelen veri direkt USD kabul edilir.
 
                 _context.TradeLogs.Add(log);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { message = "İşlem açılışı kaydedildi." });
+                _logger.LogInformation($"🔵 MT5 İŞLEM AÇILDI: Ticket:{log.Ticket} | {log.Symbol} | {log.OpenPrice}$");
+                return Ok(new { status = "success" });
             }
             catch (Exception ex)
             {
@@ -191,7 +107,7 @@ namespace ByteClick.Controllers
             }
         }
 
-        // POST: api/trade/close -> MT5 işlem kapandığında çağırır
+        // 3. MT5 İŞLEM KAPANIŞ KAYDI (MT5 -> API)
         [HttpPost("close")]
         public async Task<IActionResult> LogClose([FromBody] TradeUpdateDTO update)
         {
@@ -200,16 +116,17 @@ namespace ByteClick.Controllers
                 var existingLog = await _context.TradeLogs
                     .FirstOrDefaultAsync(x => x.Ticket == update.Ticket && x.IsOpen);
 
-                if (existingLog == null)
-                    return NotFound("Güncellenecek açık işlem bulunamadı.");
+                if (existingLog == null) return NotFound("Güncellenecek açık işlem bulunamadı.");
 
                 existingLog.ClosePrice = update.ClosePrice;
-                existingLog.Profit = update.Profit;
+                existingLog.Profit = update.Profit; // USD bazlı kâr/zarar
                 existingLog.CloseTime = DateTime.Now;
                 existingLog.IsOpen = false;
 
                 await _context.SaveChangesAsync();
-                return Ok(new { message = "İşlem kapanışı ve kâr/zarar kaydedildi." });
+
+                _logger.LogInformation($"🔴 MT5 İŞLEM KAPANDI: Ticket:{update.Ticket} | Kar:{update.Profit}$");
+                return Ok(new { status = "success" });
             }
             catch (Exception ex)
             {
@@ -217,32 +134,61 @@ namespace ByteClick.Controllers
             }
         }
 
-        // Dashboard için tüm işlemleri getir
-        [HttpGet("history")]
-        public ActionResult<List<TradeLogs>> GetHistory()
+        // 4. ANALİZ SAYFASI İÇİN VERİ (WEB -> API)
+        [HttpGet("stats")]
+        public async Task<IActionResult> GetDashboardStats()
         {
-            return   _context.TradeLogs.OrderByDescending(x => x.OpenTime).ToList();
+            var logs = await _context.TradeLogs.ToListAsync();
+            var alerts = await _context.Alerts.ToListAsync();
+
+            var stats = new
+            {
+                TotalProfit = logs.Sum(x => x.Profit), // Toplam USD Kâr
+                TotalTrades = logs.Count,
+                WinRate = logs.Count > 0 ? (double)logs.Count(x => x.Profit > 0) / logs.Count * 100 : 0,
+                AverageLatency = alerts.Any() ? alerts.Average(x => x.DelayMs) : 0,
+                LastTrades = logs.OrderByDescending(x => x.OpenTime).Take(10).ToList()
+            };
+
+            return Ok(stats);
+        }
+
+        // MT5'in emri alması için gereken endpoint (Dokunmadık, stabil)
+        [HttpGet("latest")]
+        public async Task<IActionResult> GetLatestUnprocessedAlert()
+        {
+            var alert = await _context.Alerts
+                .Where(a => !a.IsProcessed)
+                .OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (alert == null) return Ok(new { status = "no_alerts" });
+
+            alert.IsProcessed = true;
+            alert.ProcessDelayMs = (DateTime.Now - alert.CreatedAt).TotalMilliseconds;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { status = "success", alert = alert });
         }
     }
-
-    public class TradeUpdateDTO
-    {
-        public long Ticket { get; set; }
-        public double ClosePrice { get; set; }
-        public double Profit { get; set; }
-    }
-    public class TradingViewAlertRequest
-    {
-        public string? Ticker { get; set; }     // {{ticker}}
-        public string? Action { get; set; }     // {{strategy.order.action}}
-        public string? Price { get; set; }      // {{close}}
-        public string? Time { get; set; }       // {{timenow}}
-        public string? Interval { get; set; }   // {{interval}}
-        public string? Exchange { get; set; }   // {{exchange}}
-        public string? Volume { get; set; }     // {{volume}}
-        public string? Comment { get; set; }    // {{strategy.order.comment}}
-        public decimal? Lot { get; set; }
-        public int? SL { get; set; }
-        public int? TP { get; set; }
-    }
+}
+public class TradeUpdateDTO
+{
+    public long Ticket { get; set; }
+    public double ClosePrice { get; set; }
+    public double Profit { get; set; }
+}
+public class TradingViewAlertRequest
+{
+    public string? Ticker { get; set; }     // {{ticker}}
+    public string? Action { get; set; }     // {{strategy.order.action}}
+    public string? Price { get; set; }      // {{close}}
+    public string? Time { get; set; }       // {{timenow}}
+    public string? Interval { get; set; }   // {{interval}}
+    public string? Exchange { get; set; }   // {{exchange}}
+    public string? Volume { get; set; }     // {{volume}}
+    public string? Comment { get; set; }    // {{strategy.order.comment}}
+    public decimal? Lot { get; set; }
+    public int? SL { get; set; }
+    public int? TP { get; set; }
 }

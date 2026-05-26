@@ -23,7 +23,15 @@ namespace ByteClick
                 serverOptions.ListenAnyIP(5001);
                 serverOptions.ListenAnyIP(7021);
             });
-             
+
+            // Program.cs içinde AddControllers kısmını şu şekilde güncelle:
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true; // Harf duyarlılığını kapatır
+                    options.JsonSerializerOptions.PropertyNamingPolicy = null; // PascalCase'e izin verir
+                });
+
             var app = builder.Build();
 
             using (var scope = app.Services.CreateScope())
