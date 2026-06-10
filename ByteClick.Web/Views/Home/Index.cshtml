@@ -8,170 +8,605 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>ByteClick | Pro Analyzer</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ByteClick Trading Dashboard</title>
+
     <style>
-        :root {
-            --bg: #0a0f1d;
-            --card: #161e31;
-            --accent: #38bdf8;
-            --success: #22c55e;
-            --danger: #ef4444;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            background-color: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e1a;
             color: #e2e8f0;
-            font-family: 'Inter', sans-serif;
+            padding: 24px;
+            line-height: 1.6;
+            overflow-x: hidden;
         }
 
-        .glass-card {
-            background: var(--card);
-            border: 1px solid #2d3748;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
         }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #1e293b;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .live {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #10b981;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @@keyframes pulse {
+            0% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+
+            50% {
+                opacity: 0.7;
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-box {
+            background: #13182b;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+            .stat-box:hover {
+                border-color: #3b82f6;
+                transform: translateY(-2px);
+            }
 
         .stat-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            text-uppercase;
+            font-size: 11px;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 8px;
         }
 
         .stat-value {
-            font-size: 1.5rem;
+            font-size: 28px;
             font-weight: 700;
-            display: block;
+            line-height: 1;
         }
 
-        .latency-bad {
-            color: var(--danger);
+        .green {
+            color: #10b981;
         }
 
-        .latency-good {
-            color: var(--success);
+        .red {
+            color: #ef4444;
         }
 
-        .table {
-            --bs-table-bg: transparent;
-            --bs-table-color: #e2e8f0;
-            border-color: #2d3748;
+        .blue {
+            color: #3b82f6;
+        }
+
+        .yellow {
+            color: #f59e0b;
+        }
+
+        .section {
+            background: #13182b;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #1e293b;
+            font-weight: 600;
+            font-size: 14px;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        th {
+            padding: 12px 20px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            border-bottom: 1px solid #1e293b;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 20px;
+            border-bottom: 1px solid #1e293b;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background: rgba(59, 130, 246, 0.03);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-buy {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .badge-sell {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .badge-open {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        .badge-closed {
+            background: rgba(100, 116, 139, 0.15);
+            color: #94a3b8;
+        }
+
+        .time {
+            font-size: 11px;
+            color: #64748b;
+            font-family: 'Courier New', monospace;
+        }
+
+        .delay {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .delay-good {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .delay-medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+
+        .delay-bad {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .profit-positive {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .profit-negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .mono {
+            font-family: 'Courier New', monospace;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .empty {
+            padding: 40px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        @@media (max-width: 1200px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @@media (max-width: 768px) {
+
+            body {
+                padding: 12px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            th,
+            td {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .stat-value {
+                font-size: 22px;
+            }
+
+            .section-header {
+                font-size: 13px;
+            }
         }
     </style>
 </head>
-<body class="p-4">
+<body>
 
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold">⚡ BYTECLICK <span class="text-muted fw-light">ANALYSIS TERMINAL</span></h3>
-            <div class="badge bg-primary">LIVE USD FEED</div>
-        </div>
+    <div class="container">
 
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="glass-card">
-                    <span class="stat-label">TOPLAM KÂR/ZARAR</span>
-                    <span class="stat-value @(Model.TotalProfit >= 0 ? "text-success" : "text-danger")">
-                        $@Model.TotalProfit.ToString("N2")
-                    </span>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="glass-card text-center">
-                    <span class="stat-label">WIN RATE</span>
-                    <span class="stat-value text-info">%@Model.WinRate.ToString("F1")</span>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="glass-card">
-                    <span class="stat-label">SİNYAL GECİKMESİ (AVG)</span>
-                    <span class="stat-value @(Model.AvgExecutionDelay > 1000 ? "latency-bad" : "latency-good")">
-                        @Model.AvgExecutionDelay.ToString("N0") <small style="font-size: 0.8rem">ms</small>
-                    </span>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="glass-card">
-                    <span class="stat-label">YATIRILAN HACİM</span>
-                    <span class="stat-value text-warning">$@Model.TotalInvested.ToString("N0")</span>
-                </div>
+        <!-- HEADER -->
+        <div class="header">
+            <div class="logo">⚡ BYTECLICK</div>
+
+            <div class="live">
+                <div class="dot"></div>
+                LIVE TRADING
             </div>
         </div>
 
-        <div class="row g-4">
-            <div class="col-xl-6">
-                <div class="glass-card h-100">
-                    <h6 class="mb-3 text-muted">TV Sinyal Akışı</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
+        <!-- STATS -->
+        <div class="stats">
+
+            <div class="stat-box">
+                <div class="stat-label">Toplam Kar/Zarar</div>
+
+                <div class="stat-value @(Model.TotalProfit >= 0 ? "green" : "red")">
+                    @(Model.TotalProfit >= 0 ? "+" : "")$@Model.TotalProfit.ToString("N2")
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Win Rate</div>
+
+                <div class="stat-value blue">
+                    %@Model.WinRate.ToString("F1")
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Ortalama Gecikme</div>
+
+                <div class="stat-value @(Model.AvgExecutionDelay > 2000 ? "red" : "green")">
+                    @Model.AvgExecutionDelay.ToString("N0")
+                    <small style="font-size:14px; opacity:0.6;">ms</small>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Toplam Hacim</div>
+
+                <div class="stat-value yellow">
+                    $@Model.TotalInvested.ToString("N0")
+                </div>
+            </div>
+
+        </div>
+
+        <!-- GRID -->
+        <div class="grid-2">
+
+            <!-- ALERTS -->
+            <div class="section">
+
+                <div class="section-header">
+                    <span>📡 TradingView Sinyalleri (@Model.Alerts.Count)</span>
+                </div>
+
+                @if (Model.Alerts.Any())
+                {
+                    <div class="table-wrapper">
+
+                        <table>
+
                             <thead>
                                 <tr>
                                     <th>Zaman</th>
                                     <th>Sembol</th>
-                                    <th>Aksiyon</th>
-                                    <th>TV Gecikme</th>
-                                    <th>MT5 İşleme</th>
+                                    <th>İşlem</th>
+                                    <th>Fiyat</th>
+                                    <th>TV→API</th>
+                                    <th>API→MT5</th>
+                                    <th>Toplam</th>
                                 </tr>
                             </thead>
+
                             <tbody>
-                                @foreach (var a in Model.Alerts)
+
+                                @foreach (var a in Model.Alerts.Take(20))
                                 {
+                                    var total = a.DelayMs + a.ProcessDelayMs;
+
+                                    var delayClass =
+                                    total < 1000 ? "delay-good" :
+                                    total < 3000 ? "delay-medium" :
+                                    "delay-bad";
+
                                     <tr>
-                                        <td><small>@a.CreatedAt.ToString("HH:mm:ss")</small></td>
-                                        <td><strong>@a.Symbol</strong></td>
-                                        <td><span class="badge @(a.Action == "BUY" ? "bg-success" : "bg-danger")">@a.Action</span></td>
-                                        <td class="text-info">@a.DelayMs.ToString("N0")ms</td>
-                                        <td class="text-warning">@a.ProcessDelayMs.ToString("N0")ms</td>
+
+                                        <td class="time">
+                                            @a.CreatedAt.ToString("HH:mm:ss")
+                                        </td>
+
+                                        <td class="mono" style="font-weight:600;">
+                                            @a.Symbol
+                                        </td>
+
+                                        <td>
+                                            <span class="badge @(a.Action == "BUY" ? "badge-buy" : "badge-sell")">
+                                                @a.Action
+                                            </span>
+                                        </td>
+
+                                        <td class="mono">
+                                            $@a.Price.ToString("N5")
+                                        </td>
+
+                                        <td>
+                                            <span class="delay delay-good">
+                                                @a.DelayMs.ToString("N0")ms
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <span class="delay delay-medium">
+                                                @a.ProcessDelayMs.ToString("N0")ms
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <span class="delay @delayClass">
+                                                @total.ToString("N0")ms
+                                            </span>
+                                        </td>
+
                                     </tr>
                                 }
+
                             </tbody>
+
                         </table>
+
                     </div>
-                </div>
+                }
+                else
+                {
+                    <div class="empty">
+                        Henüz sinyal yok
+                    </div>
+                }
+
             </div>
 
-            <div class="col-xl-6">
-                <div class="glass-card h-100">
-                    <h6 class="mb-3 text-muted">MT5 İşlem Defteri</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
+            <!-- TRADES -->
+            <div class="section">
+
+                <div class="section-header">
+                    <span>💼 MT5 İşlemleri (@Model.TradeLogs.Count)</span>
+                </div>
+
+                @if (Model.TradeLogs.Any())
+                {
+                    <div class="table-wrapper">
+
+                        <table>
+
                             <thead>
                                 <tr>
                                     <th>Ticket</th>
+                                    <th>Sembol</th>
+                                    <th>Tür</th>
                                     <th>Açılış</th>
+                                    <th>Kapanış</th>
                                     <th>Kar/Zarar</th>
                                     <th>Süre</th>
                                     <th>Durum</th>
                                 </tr>
                             </thead>
+
                             <tbody>
-                                @foreach (var t in Model.TradeLogs)
+
+                                @foreach (var t in Model.TradeLogs.Take(20))
                                 {
+                                    var duration = t.CloseTime.HasValue
+                                    ? (t.CloseTime.Value - t.OpenTime).TotalMinutes
+                                    : (DateTime.Now - t.OpenTime).TotalMinutes;
+
                                     <tr>
-                                        <td><small class="text-muted">#@t.Ticket</small></td>
-                                        <td>$@t.OpenPrice.ToString("N2")</td>
-                                        <td class="fw-bold @(t.Profit >= 0 ? "text-success" : "text-danger")">
-                                            @(t.Profit.HasValue ? "$" + t.Profit.Value.ToString("N2") : "---")
+
+                                        <td class="mono" style="font-size:11px; color:#64748b;">
+                                            #@t.Ticket
                                         </td>
+
+                                        <td class="mono" style="font-weight:600;">
+                                            @t.Symbol
+                                        </td>
+
                                         <td>
-                                            @if (t.CloseTime.HasValue)
-                                            {
-                                                <small>@((t.CloseTime.Value - t.OpenTime).Minutes) dk</small>
-                                            }
+                                            <span class="badge @(t.Type == "BUY" ? "badge-buy" : "badge-sell")">
+                                                @t.Type
+                                            </span>
                                         </td>
-                                        <td>@(t.IsOpen ? "⏳ AÇIK" : "🏁 KAPALI")</td>
+
+                                        <td class="mono">
+                                            $@t.OpenPrice.ToString("N5")
+                                        </td>
+
+                                        <td class="mono">
+
+                                            @if (t.ClosePrice.HasValue)
+                                            {
+                                                <span>
+                                                    $@t.ClosePrice.Value.ToString("N5")
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span style="color:#64748b;">—</span>
+                                            }
+
+                                        </td>
+
+                                        <td class="mono">
+
+                                            @if (t.Profit.HasValue)
+                                            {
+                                                <span class="@(t.Profit >= 0 ? "profit-positive" : "profit-negative")">
+                                                    @(t.Profit >= 0 ? "+" : "")$@t.Profit.Value.ToString("N2")
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span style="color:#64748b;">—</span>
+                                            }
+
+                                        </td>
+
+                                        <td>
+
+                                            @if (duration > 0)
+                                            {
+                                                if (duration < 60)
+                                                {
+                                                    <span>
+                                                        @duration.ToString("N0") dk
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    var hours = Math.Floor(duration / 60);
+                                                    var mins = Math.Floor(duration % 60);
+
+                                                    <span>
+                                                        @hours sa @mins dk
+                                                    </span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span style="color:#64748b;">—</span>
+                                            }
+
+                                        </td>
+
+                                        <td>
+                                            <span class="badge @(t.IsOpen ? "badge-open" : "badge-closed")">
+                                                @(t.IsOpen ? "AÇIK" : "KAPAT")
+                                            </span>
+                                        </td>
+
                                     </tr>
                                 }
+
                             </tbody>
+
                         </table>
+
                     </div>
-                </div>
+                }
+                else
+                {
+                    <div class="empty">
+                        Henüz işlem yok
+                    </div>
+                }
+
             </div>
+
         </div>
+
     </div>
 
-    <script>setTimeout(() => location.reload(), 10000);</script>
+    <script>
+        // 15 saniyede bir yenile
+        setTimeout(() => {
+            location.reload();
+        }, 15000);
+    </script>
+
 </body>
 </html>

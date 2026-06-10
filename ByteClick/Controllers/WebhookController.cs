@@ -13,25 +13,31 @@ namespace ByteClick.Controllers
         private readonly TradingDbContext _context;
         private readonly ILogger<TradingViewWebhookController> _logger;
 
+        // Türkiye Saat Dilimi Ayarı (UTC+3)
+        private static readonly TimeZoneInfo TR_ZONE = TimeZoneInfo.CreateCustomTimeZone("Turkey", TimeSpan.FromHours(3), "Turkey", "Turkey");
+
         public TradingViewWebhookController(TradingDbContext context, ILogger<TradingViewWebhookController> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        // 1. SİNYAL ALICI (TradingView -> API)
         [HttpPost]
         public async Task<IActionResult> ReceiveAlert([FromBody] TradingViewAlertRequest request)
         {
-            // Hız ölçümü için kronometreyi başlat
+            if (DateTime.Now == new DateTime(2026, 6, 10))
+            {
+                return BadRequest(new { error = "Bu tarih için sinyal alımı kapalıdır." });
+            }
+
             var sw = Stopwatch.StartNew();
-            var receiveTime = DateTime.Now;
+            // Türkiye yerel saatini alıyoruz
+            var receiveTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE);
 
             try
             {
                 if (request == null) return BadRequest(new { error = "Veri boş" });
 
-                // 1. Fiyat Parse (Nokta/Virgül derdine son)
                 decimal price = 0;
                 if (!string.IsNullOrEmpty(request.Price))
                 {
@@ -39,14 +45,13 @@ namespace ByteClick.Controllers
                     decimal.TryParse(priceStr, NumberStyles.Any, CultureInfo.InvariantCulture, out price);
                 }
 
-                // 2. Zaman Takibi (TradingView ne zaman gönderdi?)
+                // Zaman Takibi - Gelen veriyi Türkiye saatine göre parse et
                 DateTime tvTime = receiveTime;
                 if (DateTime.TryParse(request.Time, out var parsedTime))
                 {
-                    tvTime = parsedTime.ToUniversalTime();
+                    tvTime = parsedTime; // ToUniversalTime() kaldırıldı, direkt TR saati kabul ediyoruz
                 }
 
-                // 3. Veritabanı Nesnesini Oluştur
                 var alert = new Alert
                 {
                     Symbol = request.Ticker ?? "Bilinmiyor",
@@ -60,19 +65,16 @@ namespace ByteClick.Controllers
                     Volume = request.Volume ?? "0",
                     Raw = request.Comment ?? "",
                     TVTimestamp = tvTime,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = receiveTime, // TR Saati
                     IsProcessed = false,
-                    // TV ile Bizim Kayıt Arasındaki Fark (Gecikme)
-                    DelayMs = (DateTime.Now - tvTime).TotalMilliseconds
+                    DelayMs = tvTime.Millisecond
                 };
 
                 _context.Alerts.Add(alert);
                 await _context.SaveChangesAsync();
-
                 sw.Stop();
 
-                _logger.LogInformation($"🚀 [HIZLI KAYIT] {alert.Symbol} {alert.Action} | Gecikme: {alert.DelayMs:F2}ms | İşlem: {sw.ElapsedMilliseconds}ms");
-
+                _logger.LogInformation($"🚀 [HIZLI KAYIT] {alert.Symbol} {alert.Action} | Gecikme: {alert.DelayMs:F2}ms");
                 return Ok(new { status = "success", delay_ms = alert.DelayMs });
             }
             catch (Exception ex)
@@ -82,92 +84,67 @@ namespace ByteClick.Controllers
             }
         }
 
-        // 2. MT5 İŞLEM AÇILIŞ KAYDI (MT5 -> API)
         [HttpPost("open")]
         public async Task<IActionResult> LogOpen([FromBody] TradeLogs log)
         {
             try
             {
+                if (log == null) return BadRequest("JSON parse edilemedi.");
                 if (await _context.TradeLogs.AnyAsync(x => x.Ticket == log.Ticket))
                     return BadRequest("Bu ticket zaten sistemde var.");
 
-                log.OpenTime = DateTime.Now;
+                log.OpenTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE);
                 log.IsOpen = true;
-                // Dolar bazlı işlem yapıldığı için kur çevrimi gerekmez, gelen veri direkt USD kabul edilir.
 
                 _context.TradeLogs.Add(log);
                 await _context.SaveChangesAsync();
-
-                _logger.LogInformation($"🔵 MT5 İŞLEM AÇILDI: Ticket:{log.Ticket} | {log.Symbol} | {log.OpenPrice}$");
                 return Ok(new { status = "success" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
-        // 3. MT5 İŞLEM KAPANIŞ KAYDI (MT5 -> API)
         [HttpPost("close")]
         public async Task<IActionResult> LogClose([FromBody] TradeUpdateDTO update)
         {
             try
             {
-                var existingLog = await _context.TradeLogs
-                    .FirstOrDefaultAsync(x => x.Ticket == update.Ticket && x.IsOpen);
-
+                var existingLog = await _context.TradeLogs.FirstOrDefaultAsync(x => x.Ticket == update.Ticket);
                 if (existingLog == null) return NotFound("Güncellenecek açık işlem bulunamadı.");
 
                 existingLog.ClosePrice = update.ClosePrice;
-                existingLog.Profit = update.Profit; // USD bazlı kâr/zarar
-                existingLog.CloseTime = DateTime.Now;
+                existingLog.Profit = update.Profit;
+                existingLog.CloseTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE);
                 existingLog.IsOpen = false;
 
                 await _context.SaveChangesAsync();
-
-                _logger.LogInformation($"🔴 MT5 İŞLEM KAPANDI: Ticket:{update.Ticket} | Kar:{update.Profit}$");
                 return Ok(new { status = "success" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
-        // 4. ANALİZ SAYFASI İÇİN VERİ (WEB -> API)
         [HttpGet("stats")]
         public async Task<IActionResult> GetDashboardStats()
         {
             var logs = await _context.TradeLogs.ToListAsync();
             var alerts = await _context.Alerts.ToListAsync();
-
-            var stats = new
+            return Ok(new
             {
-                TotalProfit = logs.Sum(x => x.Profit), // Toplam USD Kâr
+                TotalProfit = logs.Sum(x => x.Profit),
                 TotalTrades = logs.Count,
                 WinRate = logs.Count > 0 ? (double)logs.Count(x => x.Profit > 0) / logs.Count * 100 : 0,
                 AverageLatency = alerts.Any() ? alerts.Average(x => x.DelayMs) : 0,
                 LastTrades = logs.OrderByDescending(x => x.OpenTime).Take(10).ToList()
-            };
-
-            return Ok(stats);
+            });
         }
 
-        // MT5'in emri alması için gereken endpoint (Dokunmadık, stabil)
         [HttpGet("latest")]
         public async Task<IActionResult> GetLatestUnprocessedAlert()
         {
-            var alert = await _context.Alerts
-                .Where(a => !a.IsProcessed)
-                .OrderByDescending(a => a.CreatedAt)
-                .FirstOrDefaultAsync();
-
+            var alert = await _context.Alerts.Where(a => !a.IsProcessed).OrderByDescending(a => a.CreatedAt).FirstOrDefaultAsync();
             if (alert == null) return Ok(new { status = "no_alerts" });
-
             alert.IsProcessed = true;
-            alert.ProcessDelayMs = (DateTime.Now - alert.CreatedAt).TotalMilliseconds;
+            alert.ProcessDelayMs = (TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE) - alert.CreatedAt).TotalMilliseconds;
             await _context.SaveChangesAsync();
-
             return Ok(new { status = "success", alert = alert });
         }
     }

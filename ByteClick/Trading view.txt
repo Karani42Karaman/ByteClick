@@ -1,0 +1,41 @@
+Trading view 
+
+//@version=5
+indicator("EMA Cross Signal + EMA Filter", overlay=true)
+
+// === INPUTS ===
+fastLength = input.int(9, title="Hızlı EMA")
+slowLength = input.int(21, title="Yavaş EMA")
+
+// === EMA FILTER ===
+useTrendFilter = input.bool(true, title="EMA Trend Filtresi Aktif")
+trendLength = input.int(144, title="Trend EMA")
+
+// === EMA HESAPLAMA ===
+fastEMA = ta.ema(close, fastLength)
+slowEMA = ta.ema(close, slowLength)
+trendEMA = ta.ema(close, trendLength)
+
+// === KESİŞİMLER ===
+emaBuy = ta.crossover(fastEMA, slowEMA)
+emaSell = ta.crossunder(fastEMA, slowEMA)
+
+// === EMA FİLTRESİ ===
+buyFilter = close > trendEMA
+sellFilter = close < trendEMA
+
+buySignal = emaBuy and (not useTrendFilter or buyFilter)
+sellSignal = emaSell and (not useTrendFilter or sellFilter)
+
+// === GRAFİK ===
+plot(fastEMA, color=color.green, title="Fast EMA")
+plot(slowEMA, color=color.red, title="Slow EMA")
+plot(trendEMA, color=color.blue, linewidth=2, title="Trend EMA")
+
+// === SİNYALLER ===
+plotshape(buySignal, title="BUY", location=location.belowbar, color=color.green, style=shape.labelup, text="BUY")
+plotshape(sellSignal, title="SELL", location=location.abovebar, color=color.red, style=shape.labeldown, text="SELL")
+
+// === ALERT ===
+alertcondition(buySignal, title="BUY Alert", message="EMA BUY Sinyali")
+alertcondition(sellSignal, title="SELL Alert", message="EMA SELL Sinyali")

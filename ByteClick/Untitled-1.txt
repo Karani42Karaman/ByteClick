@@ -1,0 +1,81 @@
+//@version=6
+indicator(title="Strong Double Stochastic Signal", shorttitle="STRONG_2STOCH", overlay=true)
+
+// ================= INPUTS =================
+kLen1 = input.int(21, title="Stoch 1 K Length")
+dLen1 = input.int(3,  title="Stoch 1 D Length")
+sLen1 = input.int(3,  title="Stoch 1 Smoothing")
+
+kLen2 = input.int(50, title="Stoch 2 K Length")
+dLen2 = input.int(3,  title="Stoch 2 D Length")
+sLen2 = input.int(3,  title="Stoch 2 Smoothing")
+
+emaLen = input.int(200, title="Trend EMA Length")
+
+useEMAFilter   = input.bool(true, title="Use EMA Trend Filter")
+useZoneFilter  = input.bool(true, title="Use OB / OS Zone Filter")
+useSlopeFilter = input.bool(true, title="Use EMA Slope Filter")
+useATRFilter   = input.bool(true, title="Use ATR Filter")
+
+atrLen  = input.int(14, title="ATR Length")
+atrMult = input.float(0.5, title="ATR Min Multiplier")
+
+obLevel = input.int(80, title="Overbought Level")
+osLevel = input.int(20, title="Oversold Level")
+
+// ================= FUNCTIONS =================
+stochCalc(kLen, sLen, dLen) =>
+    k = ta.sma(ta.stoch(close, high, low, kLen), sLen)
+    d = ta.sma(k, dLen)
+    [k, d]
+
+// ================= STOCH =================
+[k1, d1] = stochCalc(kLen1, sLen1, dLen1)
+[k2, d2] = stochCalc(kLen2, sLen2, dLen2)
+
+// ================= TREND =================
+trendEMA = ta.ema(close, emaLen)
+plot(trendEMA, "Trend EMA", color=color.yellow)
+
+// ================= FILTERS =================
+emaUp   = trendEMA > trendEMA[1]
+emaDown = trendEMA < trendEMA[1]
+
+priceAbove = close > trendEMA
+priceBelow = close < trendEMA
+
+atr = ta.atr(atrLen)
+atrOk = atr > ta.sma(atr, atrLen) * atrMult
+
+zoneLong  = k1 < osLevel and k2 < osLevel
+zoneShort = k1 > obLevel and k2 > obLevel
+
+// ================= BASE SIGNAL =================
+long1  = ta.crossover(k1, d1)
+short1 = ta.crossunder(k1, d1)
+
+long2  = ta.crossover(k2, d2)
+short2 = ta.crossunder(k2, d2)
+
+// ================= FINAL SIGNAL =================
+longSignal =
+     long1 and long2 and
+     (not useZoneFilter  or zoneLong) and
+     (not useEMAFilter   or priceAbove) and
+     (not useSlopeFilter or emaUp) and
+     (not useATRFilter   or atrOk)
+
+shortSignal =
+     short1 and short2 and
+     (not useZoneFilter  or zoneShort) and
+     (not useEMAFilter   or priceBelow) and
+     (not useSlopeFilter or emaDown) and
+     (not useATRFilter   or atrOk)
+
+// ================= SHAPES =================
+plotshape(longSignal,  title="LONG",  style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.small, text="LONG")
+plotshape(shortSignal, title="SHORT", style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.small, text="SHORT")
+
+// ================= ALERTS =================
+alertcondition(longSignal,  title="Strong Double Stoch LONG",  message="Strong Double Stochastic LONG Signal")
+alertcondition(shortSignal, title="Strong Double Stoch SHORT", message="Strong Double Stochastic SHORT Signal")
