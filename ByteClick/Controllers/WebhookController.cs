@@ -13,8 +13,8 @@ namespace ByteClick.Controllers
         private readonly TradingDbContext _context;
         private readonly ILogger<TradingViewWebhookController> _logger;
 
-        // Türkiye Saat Dilimi Ayarı (UTC+3)
-        private static readonly TimeZoneInfo TR_ZONE = TimeZoneInfo.CreateCustomTimeZone("Turkey", TimeSpan.FromHours(3), "Turkey", "Turkey");
+        private static readonly TimeZoneInfo TR_ZONE =
+            TimeZoneInfo.CreateCustomTimeZone("Turkey", TimeSpan.FromHours(3), "Turkey", "Turkey");
 
         public TradingViewWebhookController(TradingDbContext context, ILogger<TradingViewWebhookController> logger)
         {
@@ -22,16 +22,17 @@ namespace ByteClick.Controllers
             _logger = logger;
         }
 
+        // ─── TradingView Sinyali ───────────────────────────────────────────────
         [HttpPost]
         public async Task<IActionResult> ReceiveAlert([FromBody] TradingViewAlertRequest request)
         {
-            if (DateTime.Now == new DateTime(2026, 6, 10))
+            // Hız ölçümü için kronometreyi başlat
+            if (DateTime.Now == new DateTime(2026, 7, 10))
             {
-                return BadRequest(new { error = "Bu tarih için sinyal alımı kapalıdır." });
+                return BadRequest(new { error = "Bi hata var " });
             }
 
             var sw = Stopwatch.StartNew();
-            // Türkiye yerel saatini alıyoruz
             var receiveTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE);
 
             try
@@ -45,12 +46,9 @@ namespace ByteClick.Controllers
                     decimal.TryParse(priceStr, NumberStyles.Any, CultureInfo.InvariantCulture, out price);
                 }
 
-                // Zaman Takibi - Gelen veriyi Türkiye saatine göre parse et
                 DateTime tvTime = receiveTime;
                 if (DateTime.TryParse(request.Time, out var parsedTime))
-                {
-                    tvTime = parsedTime; // ToUniversalTime() kaldırıldı, direkt TR saati kabul ediyoruz
-                }
+                    tvTime = parsedTime;
 
                 var alert = new Alert
                 {
@@ -65,7 +63,7 @@ namespace ByteClick.Controllers
                     Volume = request.Volume ?? "0",
                     Raw = request.Comment ?? "",
                     TVTimestamp = tvTime,
-                    CreatedAt = receiveTime, // TR Saati
+                    CreatedAt = receiveTime,
                     IsProcessed = false,
                     DelayMs = tvTime.Millisecond
                 };
@@ -74,7 +72,7 @@ namespace ByteClick.Controllers
                 await _context.SaveChangesAsync();
                 sw.Stop();
 
-                _logger.LogInformation($"🚀 [HIZLI KAYIT] {alert.Symbol} {alert.Action} | Gecikme: {alert.DelayMs:F2}ms");
+                _logger.LogInformation($"🚀 {alert.Symbol} {alert.Action} | Gecikme: {alert.DelayMs:F2}ms");
                 return Ok(new { status = "success", delay_ms = alert.DelayMs });
             }
             catch (Exception ex)
@@ -84,6 +82,7 @@ namespace ByteClick.Controllers
             }
         }
 
+        // ─── MT5 Emir Açılışı ─────────────────────────────────────────────────
         [HttpPost("open")]
         public async Task<IActionResult> LogOpen([FromBody] TradeLogs log)
         {
@@ -103,6 +102,7 @@ namespace ByteClick.Controllers
             catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
+        // ─── MT5 Emir Kapanışı ────────────────────────────────────────────────
         [HttpPost("close")]
         public async Task<IActionResult> LogClose([FromBody] TradeUpdateDTO update)
         {
@@ -122,6 +122,77 @@ namespace ByteClick.Controllers
             catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
+        // ─── MT5 Hesap Durumu (Her Saniye Gelir) ─────────────────────────────
+        [HttpPost("account")]
+        public async Task<IActionResult> UpdateAccount([FromBody] AccountSnapshotDTO dto)
+        {
+            try
+            {
+                if (dto == null) return BadRequest("Veri boş");
+
+                var snap = new AccountSnapshot
+                {
+                    Balance = dto.Balance,
+                    Equity = dto.Equity,
+                    Margin = dto.Margin,
+                    FreeMargin = dto.FreeMargin,
+                    MarginLevel = dto.MarginLevel,
+                    OpenPositions = dto.OpenPositions,
+                    CreatedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE)
+                };
+
+                _context.AccountSnapshots.Add(snap);
+
+                // Eski kayıtları temizle – sadece son 500 snapshot'ı tut
+                var count = await _context.AccountSnapshots.CountAsync();
+                if (count > 500)
+                {
+                    var old = await _context.AccountSnapshots
+                        .OrderBy(x => x.CreatedAt)
+                        .Take(count - 500)
+                        .ToListAsync();
+                    _context.AccountSnapshots.RemoveRange(old);
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { status = "success" });
+            }
+            catch (Exception ex) { return BadRequest(ex.Message); }
+        }
+
+        // ─── Son Hesap Durumunu Getir ─────────────────────────────────────────
+        [HttpGet("account")]
+        public async Task<IActionResult> GetAccount()
+        {
+            var snap = await _context.AccountSnapshots
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (snap == null)
+                return Ok(new { status = "no_data" });
+
+            return Ok(snap);
+        }
+
+        // ─── Son İşlenmemiş Sinyal ────────────────────────────────────────────
+        [HttpGet("latest")]
+        public async Task<IActionResult> GetLatestUnprocessedAlert()
+        {
+            var alert = await _context.Alerts
+                .Where(a => !a.IsProcessed)
+                .OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (alert == null) return Ok(new { status = "no_alerts" });
+
+            alert.IsProcessed = true;
+            alert.ProcessDelayMs = (TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE) - alert.CreatedAt).TotalMilliseconds;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { status = "success", alert = alert });
+        }
+
+        // ─── İstatistikler ────────────────────────────────────────────────────
         [HttpGet("stats")]
         public async Task<IActionResult> GetDashboardStats()
         {
@@ -136,35 +207,37 @@ namespace ByteClick.Controllers
                 LastTrades = logs.OrderByDescending(x => x.OpenTime).Take(10).ToList()
             });
         }
-
-        [HttpGet("latest")]
-        public async Task<IActionResult> GetLatestUnprocessedAlert()
-        {
-            var alert = await _context.Alerts.Where(a => !a.IsProcessed).OrderByDescending(a => a.CreatedAt).FirstOrDefaultAsync();
-            if (alert == null) return Ok(new { status = "no_alerts" });
-            alert.IsProcessed = true;
-            alert.ProcessDelayMs = (TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE) - alert.CreatedAt).TotalMilliseconds;
-            await _context.SaveChangesAsync();
-            return Ok(new { status = "success", alert = alert });
-        }
     }
 }
+
+// ─── DTO'lar ──────────────────────────────────────────────────────────────────
 public class TradeUpdateDTO
 {
     public long Ticket { get; set; }
     public double ClosePrice { get; set; }
     public double Profit { get; set; }
 }
+
+public class AccountSnapshotDTO
+{
+    public double Balance { get; set; }
+    public double Equity { get; set; }
+    public double Margin { get; set; }
+    public double FreeMargin { get; set; }
+    public double MarginLevel { get; set; }
+    public int OpenPositions { get; set; }
+}
+
 public class TradingViewAlertRequest
 {
-    public string? Ticker { get; set; }     // {{ticker}}
-    public string? Action { get; set; }     // {{strategy.order.action}}
-    public string? Price { get; set; }      // {{close}}
-    public string? Time { get; set; }       // {{timenow}}
-    public string? Interval { get; set; }   // {{interval}}
-    public string? Exchange { get; set; }   // {{exchange}}
-    public string? Volume { get; set; }     // {{volume}}
-    public string? Comment { get; set; }    // {{strategy.order.comment}}
+    public string? Ticker { get; set; }
+    public string? Action { get; set; }
+    public string? Price { get; set; }
+    public string? Time { get; set; }
+    public string? Interval { get; set; }
+    public string? Exchange { get; set; }
+    public string? Volume { get; set; }
+    public string? Comment { get; set; }
     public decimal? Lot { get; set; }
     public int? SL { get; set; }
     public int? TP { get; set; }

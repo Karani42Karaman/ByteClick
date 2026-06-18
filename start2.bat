@@ -9,7 +9,6 @@ echo ---------------------------------------------------
 echo.
 
 :: Tüneli başlatır ve linki ekranda tutar
-cloudflared tunnel --url http://localhost:7021
 
 cloudflared tunnel --url http://localhost:8080
 

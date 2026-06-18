@@ -25,16 +25,27 @@ namespace ByteClick.Web.Controllers
                 .Take(100)
                 .ToListAsync();
 
+            // Son hesap snapshot'ý
+            var account = await _context.AccountSnapshots
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+
+
+            _context.AccountSnapshots.RemoveRange(
+               await _context.AccountSnapshots
+                   .Where(x => x.CreatedAt.AddDays(3) >= DateTime.Now)
+                   .ToListAsync());
+
             var model = new DashboardViewModel
             {
                 TotalProfit = trades.Sum(x => x.Profit ?? 0),
                 WinRate = trades.Count > 0
-                    ? (double)trades.Count(x => x.Profit > 0) / trades.Count * 100
-                    : 0,
+                                    ? (double)trades.Count(x => x.Profit > 0) / trades.Count * 100
+                                    : 0,
                 AvgExecutionDelay = alerts.Any() ? alerts.Average(x => x.DelayMs + x.ProcessDelayMs) : 0,
-                TotalInvested = trades.Sum(x => x.Lot * x.OpenPrice),
                 Alerts = alerts,
-                TradeLogs = trades
+                TradeLogs = trades,
+                Account = account
             };
 
             return View(model);
@@ -46,8 +57,8 @@ namespace ByteClick.Web.Controllers
         public double TotalProfit { get; set; }
         public double WinRate { get; set; }
         public double AvgExecutionDelay { get; set; }
-        public double TotalInvested { get; set; }
         public List<Alert> Alerts { get; set; } = new();
         public List<TradeLogs> TradeLogs { get; set; } = new();
+        public AccountSnapshot? Account { get; set; }
     }
 }

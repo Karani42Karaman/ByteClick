@@ -8,5 +8,6 @@ namespace ByteClick.Data
         public TradingDbContext(DbContextOptions<TradingDbContext> options) : base(options) { }
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<TradeLogs> TradeLogs { get; set; }
+        public DbSet<AccountSnapshot> AccountSnapshots { get; set; }
     }
 }

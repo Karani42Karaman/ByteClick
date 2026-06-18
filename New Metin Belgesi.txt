@@ -1,0 +1,12 @@
+{
+  "ticker": "{{ticker}}",
+  "action": "BUY",
+  "price": "{{close}}",
+  "time": "{{timenow}}",
+  "interval": "{{interval}}",
+  "exchange": "{{exchange}}",
+  "volume": "{{volume}}",
+  "high": "{{high}}",
+  "low": "{{low}}",
+  "comment": "{{strategy.order.comment}}"
+}
