@@ -1,4 +1,5 @@
 using ByteClick.Data;
+using ByteClick.Web.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteClick.Web
@@ -13,7 +14,7 @@ namespace ByteClick.Web
             builder.Services.AddControllersWithViews();
             builder.Services.AddDbContext<TradingDbContext>(options =>
              options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+            builder.Services.AddHostedService<WeeklyCleanupService>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

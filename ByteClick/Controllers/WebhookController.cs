@@ -26,7 +26,7 @@ namespace ByteClick.Controllers
         [HttpPost]
         public async Task<IActionResult> ReceiveAlert([FromBody] TradingViewAlertRequest request)
         {
-            // Hız ölçümü için kronometreyi başlat
+             
             if (DateTime.Now >= new DateTime(2026, 7, 19))
             {
                 return BadRequest(new { error = "Bi hata var " });

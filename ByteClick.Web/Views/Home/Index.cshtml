@@ -2,7 +2,6 @@
 @model DashboardViewModel
 @{
     Layout = null;
-    // Hesap özeti kartı için güvenli varsayılan değerler
     var balance = Model.Account?.Balance ?? 0;
     var equity = Model.Account?.Equity ?? 0;
     var marginLevel = Model.Account?.MarginLevel ?? 0;
@@ -13,8 +12,12 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ByteClick Pro Trading Dashboard</title>
+
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.jqueryui.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/select/2.0.3/css/select.jqueryui.css">
 
     <style>
         :root {
@@ -36,13 +39,14 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-main);
             color: var(--text-main);
-            padding: 24px;
+            padding: 16px;
             line-height: 1.5;
         }
 
@@ -51,17 +55,80 @@
             margin: 0 auto;
         }
 
+        /* ADMIN AUTH OVERLAY */
+        #admin-lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-main);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 30px 20px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+            .login-card h2 {
+                margin-bottom: 20px;
+                color: var(--primary);
+                font-size: 20px;
+            }
+
+            .login-card input {
+                width: 100%;
+                padding: 14px;
+                background: #060913;
+                border: 1px solid var(--border-color);
+                color: #fff;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                outline: none;
+                font-size: 16px;
+            }
+
+                .login-card input:focus {
+                    border-color: var(--primary);
+                }
+
+            .login-card button {
+                width: 100%;
+                padding: 14px;
+                background: var(--primary);
+                border: none;
+                color: white;
+                font-weight: bold;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+
         /* HEADER */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
-            padding: 16px 24px;
+            margin-bottom: 20px;
+            padding: 16px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .logo-area {
@@ -71,7 +138,7 @@
         }
 
         .logo {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 800;
             letter-spacing: 1px;
             background: linear-gradient(135deg, #60a5fa, #34d399);
@@ -83,11 +150,11 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             background: var(--success-glow);
             color: var(--success);
-            padding: 6px 14px;
+            padding: 6px 12px;
             border-radius: 20px;
             border: 1px solid rgba(16, 185, 129, 0.2);
         }
@@ -101,57 +168,48 @@
         }
 
         @@keyframes pulse {
-            0%
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
 
-        {
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-        }
+            70% {
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
 
-        70% {
-            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-        }
-
-        100% {
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-        }
-
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
         }
 
         /* METRICS GRID */
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         .metric-card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 24px;
+            padding: 20px;
             position: relative;
             overflow: hidden;
             transition: all 0.2s ease;
         }
 
-            .metric-card:hover {
-                border-color: var(--primary);
-                transform: translateY(-2px);
-                box-shadow: 0 8px 30px rgba(59, 130, 246, 0.08);
-            }
-
         .metric-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .metric-value {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             font-family: 'Courier New', monospace;
             letter-spacing: -0.5px;
@@ -163,9 +221,10 @@
             color: var(--text-muted);
             display: flex;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px;
         }
 
-        /* COLORS & EFFECTS */
         .text-green {
             color: var(--success);
         }
@@ -186,7 +245,7 @@
         .dashboard-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 24px;
+            gap: 20px;
         }
 
         .board-section {
@@ -196,62 +255,124 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            padding: 16px;
+            min-width: 0;
         }
 
         .section-title {
-            padding: 20px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: rgba(255, 255, 255, 0.01);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
-        .section-count {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 4px 10px;
-            border-radius: 8px;
+        /* BUTTONS */
+        .btn-delete-bulk {
+            background: var(--danger-glow);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            padding: 8px 14px;
+            border-radius: 6px;
             font-size: 12px;
-            color: var(--text-muted);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        /* SMART TABLES */
+            .btn-delete-bulk:hover {
+                background: var(--danger);
+                color: white;
+            }
+
+        /* TABLES & DATATABLES CUSTOM OVERRIDES */
         .table-container {
+            width: 100%;
             overflow-x: auto;
-            width: 100%;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 5px;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
+        table.dataTable {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            background: transparent !important;
+            color: var(--text-main) !important;
+            white-space: nowrap;
         }
 
-        th {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 14px 20px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border-color);
+            table.dataTable thead th {
+                background: rgba(0, 0, 0, 0.4) !important;
+                color: var(--text-muted) !important;
+                font-size: 11px !important;
+                text-transform: uppercase;
+                border-bottom: 1px solid var(--border-color) !important;
+                padding: 12px 8px !important;
+                position: relative;
+            }
+
+            table.dataTable tbody td {
+                background: transparent !important;
+                border-bottom: 1px solid rgba(30, 41, 59, 0.5) !important;
+                font-size: 13px;
+                padding: 12px 8px !important;
+            }
+
+            /* CRITICAL FIX: CHECKBOX ÜZERİNDEKİ OKALARI VE TIKLAMA ENGELİNİ KALDIRMA */
+            table.dataTable thead th.no-sort::before,
+            table.dataTable thead th.no-sort::after {
+                display: none !important;
+            }
+
+            table.dataTable thead th.no-sort {
+                cursor: default !important;
+                pointer-events: auto !important;
+                padding-right: 8px !important;
+            }
+
+        /* CRITICAL FIX: SİSTEM DROPDOWN RENK VE STİL GÜNCELLEMESİ */
+        .dataTables_wrapper select,
+        .dataTables_length select,
+        select[name$="_length"] {
+            background-color: #060913 !important;
+            color: #f8fafc !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 6px !important;
+            padding: 6px 30px 6px 10px !important;
+            outline: none !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 10px center !important;
         }
 
-        td {
-            padding: 14px 20px;
-            border-bottom: 1px solid rgba(30, 41, 59, 0.5);
-            font-size: 13px;
-        }
+            /* Açılır seçenek listesini her ortamda karartma */
+            .dataTables_wrapper select option,
+            .dataTables_length select option,
+            select[name$="_length"] option {
+                background-color: #0d1224 !important;
+                color: #f8fafc !important;
+                font-size: 14px !important;
+            }
 
-        tr:hover td {
-            background: rgba(255, 255, 255, 0.01);
-        }
-
-        tr:last-child td {
-            border-bottom: none;
+        .dataTables_wrapper .dataTables_filter input {
+            background: #060913 !important;
+            color: #fff !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 6px;
+            padding: 6px 10px;
+            outline: none;
+            font-size: 14px;
         }
 
         /* REUSABLE BADGES */
@@ -293,7 +414,6 @@
             font-weight: 600;
         }
 
-        /* LATENCY SPEEDOMETER */
         .speed-pill {
             font-family: monospace;
             padding: 2px 6px;
@@ -318,44 +438,78 @@
         }
 
         .empty-state {
-            padding: 60px 20px;
+            padding: 30px;
             text-align: center;
             color: var(--text-muted);
-            font-size: 14px;
+            font-size: 13px;
         }
 
-        /* RESPONSIVE DESIGN */
+        /* RESPONSIVE MEDIA QUERIES */
         @@media (max-width: 1280px) {
-            .dashboard-layout
-
-        {
-            grid-template-columns: 1fr;
+            .dashboard-layout {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
         }
 
-        }
+        @@media (max-width: 576px) {
+            body {
+                padding: 10px;
+            }
 
-        @@media (max-width: 768px) {
-            body
+            .header {
+                justify-content: center;
+                text-align: center;
+                padding: 12px;
+            }
 
-        {
-            padding: 12px;
-        }
+            .metric-card {
+                padding: 16px;
+            }
 
-        .metrics-grid {
-            grid-template-columns: 1fr;
-        }
+            .metric-value {
+                font-size: 24px;
+            }
 
-        .metric-value {
-            font-size: 26px;
-        }
+            .section-title {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+                gap: 10px;
+            }
 
+            .btn-delete-bulk {
+                width: 100%;
+                text-align: center;
+                padding: 10px;
+            }
+
+            .dataTables_length, .dataTables_filter {
+                width: 100%;
+                text-align: center !important;
+                margin-bottom: 8px;
+            }
+
+                .dataTables_filter input {
+                    width: 100%;
+                    margin-left: 0 !important;
+                    margin-top: 4px;
+                }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div id="admin-lock-screen">
+        <div class="login-card">
+            <h2>ByteClick Engine Giriş</h2>
+            <input type="password" id="admin-password" placeholder="Erişim Şifresi" />
+            <button onclick="checkAdminAuth()">Sisteme Giriş Yap</button>
+            <p id="login-error" style="color:var(--danger); font-size:12px; margin-top:10px; display:none;">Hatalı Şifre!</p>
+        </div>
+    </div>
 
+    <div class="container">
         <div class="header">
             <div class="logo-area">
                 <div class="logo">⚡ BYTECLICK ENGINE</div>
@@ -367,34 +521,33 @@
         </div>
 
         <div class="metrics-grid">
-
             <div class="metric-card">
                 <div class="metric-label">Toplam Net Kar/Zarar</div>
                 <div class="metric-value @(Model.TotalProfit >= 0 ? "text-green" : "text-red")">
                     @(Model.TotalProfit >= 0 ? "+" : "")$@Model.TotalProfit.ToString("N2")
                 </div>
                 <div class="metric-sub">
-                    <span>Sinyal Başarı Oranı:</span>
-                    <span class="text-blue font-weight:700;">%@Model.WinRate.ToString("F1")</span>
+                    <span>Başarı Oranı:</span>
+                    <span class="text-blue" style="font-weight:700;">%@Model.WinRate.ToString("F1")</span>
                 </div>
             </div>
 
             <div class="metric-card">
-                <div class="metric-label">Hesap Bakiyesi (Balance)</div>
+                <div class="metric-label">Hesap Bakiyesi</div>
                 <div class="metric-value text-blue">$@balance.ToString("N2")</div>
                 <div class="metric-sub">
-                    <span>Mevcut Varlık (Equity):</span>
+                    <span>Varlık (Equity):</span>
                     <span>$@equity.ToString("N2")</span>
                 </div>
             </div>
 
             <div class="metric-card">
-                <div class="metric-label">Teminat Seviyesi (Margin Level)</div>
+                <div class="metric-label">Teminat Seviyesi</div>
                 <div class="metric-value @(marginLevel < 200 && marginLevel > 0 ? "text-red" : "text-green")">
                     %@marginLevel.ToString("N1")
                 </div>
                 <div class="metric-sub">
-                    <span>Açık Pozisyon Adedi:</span>
+                    <span>Açık Pozisyon:</span>
                     <span class="text-orange">@openPos Adet</span>
                 </div>
             </div>
@@ -402,14 +555,13 @@
             <div class="metric-card">
                 <div class="metric-label">Ortalama Ağ Gecikmesi</div>
                 <div class="metric-value @(Model.AvgExecutionDelay > 1500 ? "text-red" : "text-green")">
-                    @Model.AvgExecutionDelay.ToString("N0") <small style="font-size: 16px; opacity:0.5;">ms</small>
+                    @Model.AvgExecutionDelay.ToString("N0") <small style="font-size: 14px; opacity:0.5;">ms</small>
                 </div>
                 <div class="metric-sub">
                     <span>Hedef Limit:</span>
                     <span>&lt; 1000ms</span>
                 </div>
             </div>
-
         </div>
 
         <div class="dashboard-layout">
@@ -417,37 +569,37 @@
             <div class="board-section">
                 <div class="section-title">
                     <span>📡 Gelen TradingView Sinyalleri</span>
-                    <span class="section-count">Son @Model.Alerts.Count Kayıt</span>
+                    <button class="btn-delete-bulk" onclick="deleteSelectedAlerts()">Seçilenleri Sil</button>
                 </div>
 
-                <div class="table-container data-table">
-                    @if (Model.Alerts.Any())
+                <div class="table-container">
+                    @if (Model.Alerts != null && Model.Alerts.Any())
                     {
-                        <table>
+                        <table id="alertsTable" class="display cell-border">
                             <thead>
                                 <tr>
+                                    <th class="no-sort" style="width:20px; text-align:center;"><input type="checkbox" id="selectAllAlerts" /></th>
                                     <th>Zaman</th>
                                     <th>Sembol</th>
                                     <th>Aksiyon</th>
-                                    <th>Sinyal Fiyatı</th>
+                                    <th>Fiyat</th>
                                     <th>TV Gecikme</th>
                                     <th>MT5 Gecikme</th>
                                     <th>Toplam</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var alert in Model.Alerts.Take(30))
+                                @foreach (var alert in Model.Alerts)
                                 {
                                     var totalDelay = alert.DelayMs + alert.ProcessDelayMs;
                                     string speedClass = totalDelay < 1000 ? "speed-fast" : (totalDelay < 2500 ? "speed-medium" : "speed-slow");
 
-                                    <tr>
+                                    <tr data-id="@alert.Id">
+                                        <td style="text-align:center;"><input type="checkbox" class="alert-select" value="@alert.Id" /></td>
                                         <td class="mono text-muted">@alert.CreatedAt.ToString("HH:mm:ss")</td>
                                         <td class="mono">@alert.Symbol</td>
                                         <td>
-                                            <span class="badge @(alert.Action == "BUY" ? "badge-buy" : "badge-sell")">
-                                                @alert.Action
-                                            </span>
+                                            <span class="badge @(alert.Action == "BUY" ? "badge-buy" : "badge-sell")">@alert.Action</span>
                                         </td>
                                         <td class="mono">$@alert.Price.ToString("N5")</td>
                                         <td><span class="speed-pill speed-fast">@alert.DelayMs.ToString("N0")ms</span></td>
@@ -468,15 +620,16 @@
             <div class="board-section">
                 <div class="section-title">
                     <span>💼 Canlı MT5 İşlem Günlükleri</span>
-                    <span class="section-count">Son @Model.TradeLogs.Count İşlem</span>
+                    <button class="btn-delete-bulk" onclick="deleteSelectedLogs()">Seçilenleri Sil</button>
                 </div>
 
-                <div class="table-container ">
-                    @if (Model.TradeLogs.Any())
+                <div class="table-container">
+                    @if (Model.TradeLogs != null && Model.TradeLogs.Any())
                     {
-                        <table>
+                        <table id="logsTable" class="display cell-border">
                             <thead>
                                 <tr>
+                                    <th class="no-sort" style="width:20px; text-align:center;"><input type="checkbox" id="selectAllLogs" /></th>
                                     <th>Ticket</th>
                                     <th>Sembol</th>
                                     <th>Yön</th>
@@ -487,19 +640,18 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var trade in Model.TradeLogs.Take(30))
+                                @foreach (var trade in Model.TradeLogs)
                                 {
                                     var durationMin = trade.CloseTime.HasValue
                                     ? (trade.CloseTime.Value - trade.OpenTime).TotalMinutes
                                     : (DateTime.Now - trade.OpenTime).TotalMinutes;
 
-                                    <tr>
+                                    <tr data-id="@trade.Id">
+                                        <td style="text-align:center;"><input type="checkbox" class="log-select" value="@trade.Id" /></td>
                                         <td class="mono text-muted" style="font-size:11px;">#@trade.Ticket</td>
                                         <td class="mono">@trade.Symbol</td>
                                         <td>
-                                            <span class="badge @(trade.Type == "BUY" ? "badge-buy" : "badge-sell")">
-                                                @trade.Type
-                                            </span>
+                                            <span class="badge @(trade.Type == "BUY" ? "badge-buy" : "badge-sell")">@trade.Type</span>
                                         </td>
                                         <td class="mono">
                                             <div>$@trade.OpenPrice.ToString("N5")</div>
@@ -547,15 +699,114 @@
             </div>
 
         </div>
-
     </div>
 
-    <script>
-        // Sayfayı her 15 saniyede bir akıcı şekilde otomatik yeniler
-        setTimeout(() => {
-            location.reload();
-        }, 2000);
-    </script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
 
+    <script>
+        // 1. ADMİN PANEL GİRİŞ SİSTEMİ
+        const SECURE_PASSWORD = "karani123.";
+
+        $(document).ready(function() {
+            if(sessionStorage.getItem("isDashboardAdmin") === "true") {
+                $("#admin-lock-screen").hide();
+                initDataTables();
+            }
+        });
+
+        function checkAdminAuth() {
+            var pass = $("#admin-password").val();
+            if(pass === SECURE_PASSWORD) {
+                sessionStorage.setItem("isDashboardAdmin", "true");
+                $("#admin-lock-screen").fadeOut(300);
+                initDataTables();
+            } else {
+                $("#login-error").show();
+            }
+        }
+
+        $("#admin-password").keypress(function(e) {
+            if(e.which == 13) { checkAdminAuth(); }
+        });
+
+        // 2. DATATABLES YAPILANDIRMASI (HEDEF SÜTUN DÜZELTİLDİ)
+        function initDataTables() {
+            var tableOptions = {
+                "paging": true,
+                "ordering": true,
+                "info": true,
+                "searching": true,
+                "pageLength": 10,
+                "lengthMenu": [5, 10, 25, 50, 100, 200],
+                "language": {
+                    "url": "https://cdn.datatables.net/plug-ins/2.0.8/i18n/tr.json"
+                },
+                "columnDefs": [
+                    { "orderable": false, "targets": 0 },
+                    { "className": "no-sort", "targets": 0 } // CSS tetikleyici sınıf ekler
+                ]
+            };
+
+            if ($.fn.DataTable.isDataTable('#alertsTable')) {
+                $('#alertsTable').DataTable().destroy();
+            }
+            if ($.fn.DataTable.isDataTable('#logsTable')) {
+                $('#logsTable').DataTable().destroy();
+            }
+
+            $('#alertsTable').DataTable(tableOptions);
+            $('#logsTable').DataTable(tableOptions);
+        }
+
+        // 3. TOPLU SEÇİM ALTYAPISI
+        $(document).on('change', '#selectAllAlerts', function() {
+            $('.alert-select').prop('checked', this.checked);
+        });
+        $(document).on('change', '#selectAllLogs', function() {
+            $('.log-select').prop('checked', this.checked);
+        });
+
+        // 4. TOPLU SİLME AJAX FONKSİYONLARI
+        function deleteSelectedAlerts() {
+            var selectedIds = [];
+            $('.alert-select:checked').each(function() {
+                selectedIds.push(parseInt($(this).val()));
+            });
+
+            if(selectedIds.length === 0) { alert("Lütfen silinecek sinyalleri seçin."); return; }
+
+            if(confirm(selectedIds.length + " adet sinyal kaydını silmek istediğinize emin misiniz?")) {
+                $.ajax({
+                    url: '/home/DeleteAlerts',
+                    type: 'POST',
+                    data: { ids: selectedIds },
+                    success: function(response) {
+                        if(response.success) { location.reload(); } else { alert("Silme hatası!"); }
+                    }
+                });
+            }
+        }
+
+        function deleteSelectedLogs() {
+            var selectedIds = [];
+            $('.log-select:checked').each(function() {
+                selectedIds.push(parseInt($(this).val()));
+            });
+
+            if(selectedIds.length === 0) { alert("Lütfen silinecek logları seçin."); return; }
+
+            if(confirm(selectedIds.length + " adet işlem günlüğünü silmek istediğinize emin misiniz?")) {
+                $.ajax({
+                    url: '/home/DeleteTradeLogs',
+                    type: 'POST',
+                    data: { ids: selectedIds },
+                    success: function(response) {
+                        if(response.success) { location.reload(); } else { alert("Silme hatası!"); }
+                    }
+                });
+            }
+        }
+    </script>
 </body>
 </html>

@@ -50,6 +50,33 @@ namespace ByteClick.Web.Controllers
 
             return View(model);
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteAlerts(List<int> ids)
+        {
+            if (ids == null || !ids.Any()) return Json(new { success = false });
+
+             
+            var items = _context.Alerts.Where(x => ids.Contains(x.Id));
+            _context.Alerts.RemoveRange(items);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteTradeLogs(List<int> ids)
+        {
+            if (ids == null || !ids.Any()) return Json(new { success = false });
+
+             
+            var items = _context.TradeLogs.Where(x => ids.Contains(x.Id));
+            _context.TradeLogs.RemoveRange(items);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
     }
 
     public class DashboardViewModel
