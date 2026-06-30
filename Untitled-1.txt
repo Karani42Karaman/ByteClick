@@ -1,0 +1,151 @@
+//@version=6
+indicator("Strong Stochastic D Signals PRO (1M)", overlay=true)
+
+// === INPUTS ===
+lengthInput      = input.int(10, title="Stochastic Length")
+kSmoothingInput  = input.int(3, title="K Smoothing")
+dSmoothingInput  = input.int(3, title="D Smoothing")
+
+overboughtLevel  = input.int(80, title="Overbought Level")
+oversoldLevel    = input.int(20, title="Oversold Level")
+
+extremeHigh      = input.int(82, title="Extreme High Filter")
+extremeLow       = input.int(18, title="Extreme Low Filter")
+
+emaLength        = input.int(100, title="Trend EMA Length")
+
+// === STOCHASTIC ===
+k = ta.sma(ta.stoch(close, high, low, lengthInput), kSmoothingInput)
+d = ta.sma(k, dSmoothingInput)
+
+// === TREND FILTER ===
+emaTrend = ta.ema(close, emaLength)
+
+// === EXTRA FILTERS ===
+// RSI
+rsi = ta.rsi(close, 14)
+
+// Volume
+volMA = ta.sma(volume, 20)
+volumeFilter = volume > volMA
+
+// Candle filter
+bullCandle = close > open
+bearCandle = close < open
+
+// === SIGNALS ===
+longSignal = ta.crossover(d, oversoldLevel) and
+     d[1] < extremeLow and
+     close > emaTrend and
+     rsi > 50 and
+     volumeFilter and
+     bullCandle and
+     barstate.isconfirmed
+
+shortSignal = ta.crossunder(d, overboughtLevel) and
+     d[1] > extremeHigh and
+     close < emaTrend and
+     rsi < 50 and
+     volumeFilter and
+     bearCandle and
+     barstate.isconfirmed
+
+// === PLOT ===
+plot(emaTrend, title="EMA Trend", color=color.orange)
+
+plotshape(longSignal,
+     title="LONG",
+     location=location.belowbar,
+     color=color.green,
+     style=shape.labelup,
+     text="LONG",
+     size=size.small)
+
+plotshape(shortSignal,
+     title="SHORT",
+     location=location.abovebar,
+     color=color.red,
+     style=shape.labeldown,
+     text="SHORT",
+     size=size.small)
+
+// === ALERTS ===
+alertcondition(longSignal, title="LONG Alert", message="PRO LONG Signal")
+alertcondition(shortSignal, title="SHORT Alert", message="PRO SHORT Signal")
+//@version=6
+indicator("Strong Stochastic PRO Signals", overlay=true)
+
+// === INPUTS ===
+lengthInput      = input.int(14, title="Stochastic Length")
+kSmoothingInput  = input.int(3, title="K Smoothing")
+dSmoothingInput  = input.int(3, title="D Smoothing")
+
+overboughtLevel  = input.int(80, title="Overbought Level")
+oversoldLevel    = input.int(20, title="Oversold Level")
+
+extremeHigh      = input.int(85, title="Extreme High Filter")
+extremeLow       = input.int(15, title="Extreme Low Filter")
+
+emaLength        = input.int(200, title="Trend EMA Length")
+rsiLength        = input.int(14, title="RSI Length")
+atrLength        = input.int(14, title="ATR Length")
+
+// === STOCHASTIC ===
+k = ta.sma(ta.stoch(close, high, low, lengthInput), kSmoothingInput)
+d = ta.sma(k, dSmoothingInput)
+
+// === TREND FILTER ===
+emaTrend = ta.ema(close, emaLength)
+
+// === MOMENTUM FILTER ===
+rsi = ta.rsi(close, rsiLength)
+
+// === VOLATILITY FILTER ===
+atr = ta.atr(atrLength)
+atrFilter = atr > ta.sma(atr, 20)
+
+// === STRONG SIGNAL CONDITIONS ===
+longSignal = ta.crossover(k, d) and
+             d < oversoldLevel and
+             d[1] < extremeLow and
+             close > emaTrend and
+             rsi > 50 and
+             atrFilter and
+             barstate.isconfirmed
+
+shortSignal = ta.crossunder(k, d) and
+              d > overboughtLevel and
+              d[1] > extremeHigh and
+              close < emaTrend and
+              rsi < 50 and
+              atrFilter and
+              barstate.isconfirmed
+
+// === PLOT ===
+plot(emaTrend, title="EMA Trend", color=color.orange)
+
+// === SIGNAL SHAPES ===
+plotshape(longSignal,
+     title="STRONG LONG",
+     location=location.belowbar,
+     color=color.green,
+     style=shape.labelup,
+     text="LONG",
+     size=size.small)
+
+plotshape(shortSignal,
+     title="STRONG SHORT",
+     location=location.abovebar,
+     color=color.red,
+     style=shape.labeldown,
+     text="SHORT",
+     size=size.small)
+
+// === ALERTS ===
+alertcondition(longSignal,
+     title="Strong LONG Alert",
+     message="PRO Strong LONG Signal Confirmed")
+
+alertcondition(shortSignal,
+     title="Strong SHORT Alert",
+     message="PRO Strong SHORT Signal Confirmed")

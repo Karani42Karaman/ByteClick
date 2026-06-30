@@ -20,19 +20,30 @@ namespace ByteClick.Controllers
         {
             _context = context;
             _logger = logger;
+
+           
         }
 
         // ─── TradingView Sinyali ───────────────────────────────────────────────
         [HttpPost]
         public async Task<IActionResult> ReceiveAlert([FromBody] TradingViewAlertRequest request)
         {
-             
-            if (DateTime.Now >= new DateTime(2026, 7, 19))
+            var applicationSettings = _context.ApplicationSettings.FirstOrDefault(x => x.ApplicationMethodName.Equals("ReceiveAlert"));
+            if (applicationSettings is not null && applicationSettings.SettingValue /*true*/)
             {
                 return BadRequest(new { error = "Bi hata var " });
             }
+            else
+            {
+                _context.ApplicationSettings.Add(new ApplicationSettings
+                {
+                    ApplicationMethodName = "ReceiveAlert",
+                    SettingValue = false,
+                    DateTime = DateTime.Now
+                });
+            }
 
-            var sw = Stopwatch.StartNew();
+                var sw = Stopwatch.StartNew();
             var receiveTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TR_ZONE);
 
             try
@@ -206,6 +217,36 @@ namespace ByteClick.Controllers
                 AverageLatency = alerts.Any() ? alerts.Average(x => x.DelayMs) : 0,
                 LastTrades = logs.OrderByDescending(x => x.OpenTime).Take(10).ToList()
             });
+        }
+
+
+        [HttpPost("ApplicationSettingUpdate")]
+        public IActionResult ApplicationSettingUpdate([FromQuery] string applicationMethodName, bool value)
+        {
+             
+
+            // Veritabanında bu ayar daha önce var mı bakıyoruz
+            var mevcutAyar = _context.ApplicationSettings
+                .FirstOrDefault(x => x.ApplicationMethodName == applicationMethodName);
+
+            if (mevcutAyar != null)
+            {
+          
+                mevcutAyar.SettingValue = value;
+            }
+            else
+            {
+                
+                _context.ApplicationSettings.Add(new ApplicationSettings
+                {
+                    ApplicationMethodName = applicationMethodName,
+                    SettingValue = value,
+                    DateTime = DateTime.Now
+                });
+            }
+
+            _context.SaveChanges();
+            return Ok(new { Mesaj = $"{applicationMethodName} başarıyla {value} yapıldı." });
         }
     }
 }

@@ -168,17 +168,20 @@
         }
 
         @@keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-            }
+           
 
-            70% {
-                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-            }
+        {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        }
 
-            100% {
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-            }
+        70% {
+            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+
         }
 
         /* METRICS GRID */
@@ -324,7 +327,6 @@
                 padding: 12px 8px !important;
             }
 
-            /* CRITICAL FIX: CHECKBOX ÜZERİNDEKİ OKALARI VE TIKLAMA ENGELİNİ KALDIRMA */
             table.dataTable thead th.no-sort::before,
             table.dataTable thead th.no-sort::after {
                 display: none !important;
@@ -336,7 +338,7 @@
                 padding-right: 8px !important;
             }
 
-        /* CRITICAL FIX: SİSTEM DROPDOWN RENK VE STİL GÜNCELLEMESİ */
+        /* SYSTEM DROPDOWN STYLES */
         .dataTables_wrapper select,
         .dataTables_length select,
         select[name$="_length"] {
@@ -356,7 +358,6 @@
             background-position: right 10px center !important;
         }
 
-            /* Açılır seçenek listesini her ortamda karartma */
             .dataTables_wrapper select option,
             .dataTables_length select option,
             select[name$="_length"] option {
@@ -446,55 +447,61 @@
 
         /* RESPONSIVE MEDIA QUERIES */
         @@media (max-width: 1280px) {
-            .dashboard-layout {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
+            .dashboard-layout
+
+        {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
         }
 
         @@media (max-width: 576px) {
-            body {
-                padding: 10px;
-            }
+            body
 
-            .header {
-                justify-content: center;
-                text-align: center;
-                padding: 12px;
-            }
+        {
+            padding: 10px;
+        }
 
-            .metric-card {
-                padding: 16px;
-            }
+        .header {
+            justify-content: center;
+            text-align: center;
+            padding: 12px;
+        }
 
-            .metric-value {
-                font-size: 24px;
-            }
+        .metric-card {
+            padding: 16px;
+        }
 
-            .section-title {
-                flex-direction: column;
-                align-items: stretch;
-                text-align: center;
-                gap: 10px;
-            }
+        .metric-value {
+            font-size: 24px;
+        }
 
-            .btn-delete-bulk {
+        .section-title {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+            gap: 10px;
+        }
+
+        .btn-delete-bulk {
+            width: 100%;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .dataTables_length, .dataTables_filter {
+            width: 100%;
+            text-align: center !important;
+            margin-bottom: 8px;
+        }
+
+            .dataTables_filter input {
                 width: 100%;
-                text-align: center;
-                padding: 10px;
+                margin-left: 0 !important;
+                margin-top: 4px;
             }
 
-            .dataTables_length, .dataTables_filter {
-                width: 100%;
-                text-align: center !important;
-                margin-bottom: 8px;
-            }
-
-                .dataTables_filter input {
-                    width: 100%;
-                    margin-left: 0 !important;
-                    margin-top: 4px;
-                }
         }
     </style>
 </head>
@@ -569,7 +576,7 @@
             <div class="board-section">
                 <div class="section-title">
                     <span>📡 Gelen TradingView Sinyalleri</span>
-                    <button class="btn-delete-bulk" onclick="deleteSelectedAlerts()">Seçilenleri Sil</button>
+                    @* <button class="btn-delete-bulk" onclick="deleteSelectedAlerts()">Seçilenleri Sil</button> *@
                 </div>
 
                 <div class="table-container">
@@ -578,7 +585,6 @@
                         <table id="alertsTable" class="display cell-border">
                             <thead>
                                 <tr>
-                                    <th class="no-sort" style="width:20px; text-align:center;"><input type="checkbox" id="selectAllAlerts" /></th>
                                     <th>Zaman</th>
                                     <th>Sembol</th>
                                     <th>Aksiyon</th>
@@ -595,7 +601,6 @@
                                     string speedClass = totalDelay < 1000 ? "speed-fast" : (totalDelay < 2500 ? "speed-medium" : "speed-slow");
 
                                     <tr data-id="@alert.Id">
-                                        <td style="text-align:center;"><input type="checkbox" class="alert-select" value="@alert.Id" /></td>
                                         <td class="mono text-muted">@alert.CreatedAt.ToString("HH:mm:ss")</td>
                                         <td class="mono">@alert.Symbol</td>
                                         <td>
@@ -620,7 +625,7 @@
             <div class="board-section">
                 <div class="section-title">
                     <span>💼 Canlı MT5 İşlem Günlükleri</span>
-                    <button class="btn-delete-bulk" onclick="deleteSelectedLogs()">Seçilenleri Sil</button>
+                    @* <button class="btn-delete-bulk" onclick="deleteSelectedLogs()">Seçilenleri Sil</button> *@
                 </div>
 
                 <div class="table-container">
@@ -629,7 +634,6 @@
                         <table id="logsTable" class="display cell-border">
                             <thead>
                                 <tr>
-                                    <th class="no-sort" style="width:20px; text-align:center;"><input type="checkbox" id="selectAllLogs" /></th>
                                     <th>Ticket</th>
                                     <th>Sembol</th>
                                     <th>Yön</th>
@@ -647,7 +651,6 @@
                                     : (DateTime.Now - trade.OpenTime).TotalMinutes;
 
                                     <tr data-id="@trade.Id">
-                                        <td style="text-align:center;"><input type="checkbox" class="log-select" value="@trade.Id" /></td>
                                         <td class="mono text-muted" style="font-size:11px;">#@trade.Ticket</td>
                                         <td class="mono">@trade.Symbol</td>
                                         <td>
@@ -730,7 +733,8 @@
             if(e.which == 13) { checkAdminAuth(); }
         });
 
-        // 2. DATATABLES YAPILANDIRMASI (HEDEF SÜTUN DÜZELTİLDİ)
+        // 2. DATATABLES YAPILANDIRMASI
+        // Checkbox sütunları kalktığı için columnDefs kaldırıldı, sıralama özellikleri tüm tabloya uygulandı.
         function initDataTables() {
             var tableOptions = {
                 "paging": true,
@@ -741,11 +745,7 @@
                 "lengthMenu": [5, 10, 25, 50, 100, 200],
                 "language": {
                     "url": "https://cdn.datatables.net/plug-ins/2.0.8/i18n/tr.json"
-                },
-                "columnDefs": [
-                    { "orderable": false, "targets": 0 },
-                    { "className": "no-sort", "targets": 0 } // CSS tetikleyici sınıf ekler
-                ]
+                }
             };
 
             if ($.fn.DataTable.isDataTable('#alertsTable')) {
@@ -759,7 +759,9 @@
             $('#logsTable').DataTable(tableOptions);
         }
 
-        // 3. TOPLU SEÇİM ALTYAPISI
+        /* SİLME VE SEÇME İŞLEMLERİ İPTAL EDİLMİŞTİR
+           Arayüz elementleri kaldırıldı, aşağıdaki fonksiyonlar pasiftir.
+
         $(document).on('change', '#selectAllAlerts', function() {
             $('.alert-select').prop('checked', this.checked);
         });
@@ -767,46 +769,9 @@
             $('.log-select').prop('checked', this.checked);
         });
 
-        // 4. TOPLU SİLME AJAX FONKSİYONLARI
-        function deleteSelectedAlerts() {
-            var selectedIds = [];
-            $('.alert-select:checked').each(function() {
-                selectedIds.push(parseInt($(this).val()));
-            });
-
-            if(selectedIds.length === 0) { alert("Lütfen silinecek sinyalleri seçin."); return; }
-
-            if(confirm(selectedIds.length + " adet sinyal kaydını silmek istediğinize emin misiniz?")) {
-                $.ajax({
-                    url: '/home/DeleteAlerts',
-                    type: 'POST',
-                    data: { ids: selectedIds },
-                    success: function(response) {
-                        if(response.success) { location.reload(); } else { alert("Silme hatası!"); }
-                    }
-                });
-            }
-        }
-
-        function deleteSelectedLogs() {
-            var selectedIds = [];
-            $('.log-select:checked').each(function() {
-                selectedIds.push(parseInt($(this).val()));
-            });
-
-            if(selectedIds.length === 0) { alert("Lütfen silinecek logları seçin."); return; }
-
-            if(confirm(selectedIds.length + " adet işlem günlüğünü silmek istediğinize emin misiniz?")) {
-                $.ajax({
-                    url: '/home/DeleteTradeLogs',
-                    type: 'POST',
-                    data: { ids: selectedIds },
-                    success: function(response) {
-                        if(response.success) { location.reload(); } else { alert("Silme hatası!"); }
-                    }
-                });
-            }
-        }
+        function deleteSelectedAlerts() { ... }
+        function deleteSelectedLogs() { ... }
+        */
     </script>
 </body>
 </html>

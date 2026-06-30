@@ -9,5 +9,6 @@ namespace ByteClick.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<TradeLogs> TradeLogs { get; set; }
         public DbSet<AccountSnapshot> AccountSnapshots { get; set; }
+        public DbSet<ApplicationSettings> ApplicationSettings { get; set; }
     }
 }
